@@ -2,43 +2,124 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Polynomial Addition Visualizer (Linked Lists)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Anime.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <title>Linked List Polynomial Visualizer</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Anime.js for smooth animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+    <script src="visualisation_dsa.js" defer></script>
 </head>
 <body>
     <div class="container">
-        <h1>Polynomial Addition Visualizer</h1>
-        <div class="inputs">
-            <input id="poly1" type="text" placeholder="Polynomial 1 (e.g. 3x^2 + 5x + 6)">
-            <input id="poly2" type="text" placeholder="Polynomial 2 (e.g. 6x^2 + 2x + 4)">
-            <button id="startBtn">Start</button>
-        </div>
-        <div class="controls">
-            <button id="playBtn">▶ Play</button>
-            <button id="pauseBtn" disabled>⏸ Pause</button>
-            <button id="nextBtn">➡ Next</button>
-            <button id="resetBtn">🔄 Reset</button>
-            <label for="speedRange">Speed:</label>
-            <input type="range" id="speedRange" min="0.5" max="2.5" step="0.1" value="1">
-        </div>
-        <div class="visualization-area vertical">
-            <div>
-                <div class="list-title">Polynomial 1</div>
-                <div id="poly1List" class="linked-list-canvas"></div>
+        <header>
+            <h1>Linked List Visualizer: Polynomial Operations</h1>
+            <p>A tool to demonstrate how linked lists work using polynomial math as an example.</p>
+        </header>
+
+        <main>
+            <!-- STEP 1: INPUTS -->
+            <section class="input-section">
+                <h2>1. Define Your Polynomials</h2>
+                <div class="input-area">
+                    <div id="polyInputContainer">
+                        <div id="polyInputStep1">
+                            <label id="polyInputLabel" for="maxPowerInput">Enter Max Power of Polynomial One:</label>
+                            <input type="number" id="maxPowerInput" min="0" placeholder="e.g., 4">
+                            <button id="nextPolyStepBtn">Next</button>
+                        </div>
+                        <form id="polyCoeffForm" class="hidden"></form>
+                        <button id="submitPolyBtn" class="hidden">Submit Polynomial</button>
+                    </div>
+                    <div id="input-summary" class="hidden">
+                        <p>✅ Polynomials created!</p>
+                        <p>You can now choose an operation below.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <div class="main-content-wrapper">
+                <!-- LEFT COLUMN: VISUALIZATION -->
+                <section class="visualization-section">
+                    <h2 id="operationHeading">2. Visualization</h2>
+                    <div id="visualizationArea" class="visualization-area">
+                        <!-- MEMORY POOL -->
+                        <div id="memoryPool" class="memory-pool">Memory Pool</div>
+
+                        <!-- LIST 1 -->
+                        <div class="list-container">
+                            <div class="head-pointer-container">
+                                <div class="head-pointer" id="head1">p1_head</div>
+                            </div>
+                            <div class="list-content">
+                                <div class="list-title">Polynomial 1</div>
+                                <div id="poly1List" class="linked-list-canvas"></div>
+                            </div>
+                        </div>
+                        <!-- LIST 2 -->
+                        <div class="list-container">
+                            <div class="head-pointer-container">
+                                <div class="head-pointer" id="head2">p2_head</div>
+                            </div>
+                            <div class="list-content">
+                                <div class="list-title">Polynomial 2</div>
+                                <div id="poly2List" class="linked-list-canvas"></div>
+                            </div>
+                        </div>
+                        <!-- RESULT LIST -->
+                        <div class="list-container">
+                            <div class="head-pointer-container">
+                                <div class="head-pointer" id="headResult">result_head</div>
+                            </div>
+                            <div class="list-content">
+                                <div class="list-title">Result</div>
+                                <div id="resultList" class="linked-list-canvas"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- RIGHT COLUMN: SIDEBAR -->
+                <aside class="sidebar">
+                    <section>
+                        <h2>3. Controls</h2>
+                        <div class="operation-menu">
+                            <button id="opAddBtn" class="op-btn" disabled>Add</button>
+                            <button id="opSubtractBtn" class="op-btn" disabled>Subtract</button>
+                            <button id="opMultiplyBtn" class="op-btn" disabled>Multiply</button>
+                        </div>
+                        <div class="controls">
+                            <button id="playBtn" disabled>▶ Play</button>
+                            <button id="pauseBtn" disabled>⏸ Pause</button>
+                            <button id="nextBtn" disabled>➡ Next</button>
+                            <button id="resetBtn">🔄 Reset All</button>
+                            <label for="speedRange">Speed:</label>
+                            <input type="range" id="speedRange" min="0.5" max="3" step="0.1" value="1.5">
+                        </div>
+                    </section>
+                    
+                    <section class="explanation-section">
+                        <h2>4. Variable State</h2>
+                        <div id="variableStateBox" class="variable-state-box">
+                            <!-- Real-time variable values will appear here -->
+                        </div>
+                    </section>
+                    
+                    <section class="explanation-section">
+                        <h2>5. Commentary</h2>
+                        <div id="explanationBox" class="explanation-box">
+                            <p>Welcome!</p>
+                        </div>
+                    </section>
+
+                    <section class="code-section">
+                        <h2>6. C++ Code</h2>
+                        <div id="codeSnippetBox" class="code-snippet-box">
+                            <!-- C++ code will appear here -->
+                        </div>
+                    </section>
+                </aside>
             </div>
-            <div>
-                <div class="list-title">Polynomial 2</div>
-                <div id="poly2List" class="linked-list-canvas"></div>
-            </div>
-            <div>
-                <div class="list-title">Result</div>
-                <div id="resultList" class="linked-list-canvas"></div>
-            </div>
-        </div>
+        </main>
     </div>
-    <script src="visualisation_dsa.js"></script>
 </body>
 </html>
