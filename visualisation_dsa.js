@@ -1,359 +1,299 @@
-// --- Utility Functions ---
-function parsePolynomial(str) {
-    // Normalize input
-    str = str.replace(/\s+/g, '').replace(/X/g, 'x');
-    // Replace x2, x3, etc. with x^2, x^3
-    str = str.replace(/x(\d+)/g, 'x^$1');
-    // Insert + before negative terms not at start
-    str = str.replace(/([^\^])-/g, '$1+-');
-    // Split into terms
-    let terms = str.split(/(?=[+-])/);
-    let arr = [];
-    for (let term of terms) {
-        if (!term) continue;
-        let coef = 1, power = 0;
-        // Match coefficient and power
-        let match = term.match(/^([+-]?\d*)(x(\^(\d+))?)?$/);
-        if (!match) throw new Error('Invalid polynomial format.');
-        if (match[1] !== '') coef = Number(match[1]);
-        else if (match[2]) coef = term[0] === '-' ? -1 : 1;
-        if (match[2]) {
-            power = match[4] ? Number(match[4]) : 1;
-        }
-        arr.push({ coef, power });
-    }
-    // Combine like powers
-    let map = {};
-    for (let t of arr) {
-        if (map[t.power]) map[t.power] += t.coef;
-        else map[t.power] = t.coef;
-    }
-    let result = [];
-    for (let p in map) {
-        if (map[p] !== 0) result.push({ coef: map[p], power: Number(p) });
-    }
-    result.sort((a, b) => b.power - a.power);
-    return result;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const dom = {
+        polyInputContainer: document.getElementById('polyInputContainer'),
+        polyInputStep1: document.getElementById('polyInputStep1'),
+        polyInputLabel: document.getElementById('polyInputLabel'),
+        maxPowerInput: document.getElementById('maxPowerInput'),
+        nextPolyStepBtn: document.getElementById('nextPolyStepBtn'),
+        polyCoeffForm: document.getElementById('polyCoeffForm'),
+        submitPolyBtn: document.getElementById('submitPolyBtn'),
+        inputSummary: document.getElementById('input-summary'),
+        opAddBtn: document.getElementById('opAddBtn'),
+        opSubtractBtn: document.getElementById('opSubtractBtn'),
+        opMultiplyBtn: document.getElementById('opMultiplyBtn'),
+        playBtn: document.getElementById('playBtn'),
+        pauseBtn: document.getElementById('pauseBtn'),
+        nextBtn: document.getElementById('nextBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+        speedRange: document.getElementById('speedRange'),
+        poly1ListDiv: document.getElementById('poly1List'),
+        poly2ListDiv: document.getElementById('poly2List'),
+        resultListDiv: document.getElementById('resultList'),
+        visualizationArea: document.getElementById('visualizationArea'),
+        explanationBox: document.getElementById('explanationBox'),
+        operationHeading: document.getElementById('operationHeading'),
+        codeSnippetBox: document.getElementById('codeSnippetBox'),
+        variableStateBox: document.getElementById('variableStateBox'),
+        memoryPool: document.getElementById('memoryPool'),
+        head1: document.getElementById('head1'),
+        head2: document.getElementById('head2'),
+        headResult: document.getElementById('headResult'),
+    };
 
-// --- Linked List Node Creation ---
-function createNodeElement({coef, power}, idx, listType, addresses) {
-    const node = document.createElement('div');
-    node.className = 'll-node';
-    node.id = `${listType}-node-${idx}`;
+    const cppCodeSnippets = {
+        NONE: `// C++ code will be highlighted here.`,
+        ADD_SUB_START: [
+            `struct Node { ... };`,
+            `Node* operate(Node* p1, Node* p2) {`,
+            `    Node* resultHead = nullptr;`,
+            `    Node* current = nullptr;`,
+        ],
+        ADD_SUB_LOOP: [`    while (p1 != nullptr && p2 != nullptr) {`],
+        COMPARE_POWER: [`        if (p1->power == p2->power) {`],
+        ADD_EQUAL: [`            int sum = p1->coeff + p2->coeff;`, `            // ... create and append new node ...`, `            p1 = p1->next;`, `            p2 = p2->next;`],
+        SUB_EQUAL: [`            int diff = p1->coeff - p2->coeff;`, `            // ... create and append new node ...`, `            p1 = p1->next;`, `            p2 = p2->next;`],
+        P1_GREATER: [`        } else if (p1->power > p2->power) {`, `            // ... append node from p1 ...`, `            p1 = p1->next;`],
+        P2_GREATER: [`        } else {`, `            // ... append node from p2 ...`, `            p2 = p2->next;`],
+        SUB_P2_GREATER: [`        } else {`, `            // ... append NEGATED node from p2 ...`, `            p2 = p2->next;`],
+        P1_REMAINDER: [`    while (p1 != nullptr) {`, `        // ... append node from p1 ...`, `        p1 = p1->next;`],
+        P2_REMAINDER: [`    while (p2 != nullptr) {`, `        // ... append node from p2 ...`, `        p2 = p2->next;`],
+        SUB_P2_REMAINDER: [`    while (p2 != nullptr) {`, `        // ... append NEGATED node from p2 ...`, `        p2 = p2->next;`],
+        MULT_OUTER_LOOP: [`Node* multiply(Node* p1, Node* p2) { ...`, `    for (Node* t1 = p1; t1 != nullptr; t1 = t1->next) {`],
+        MULT_INNER_LOOP: [`        for (Node* t2 = p2; t2 != nullptr; t2 = t2->next) {`],
+        MULT_CALC: [`            int newCoeff = t1->coeff * t2->coeff;`, `            int newPower = t1->power + t2->power;`, `            // Add to intermediate list...`],
+        MULT_COMBINE: [`    // After loops, combine like terms...`],
+        END: [`    }`, `    return resultHead;`]
+    };
 
-    // Node address and next address
-    const addr = addresses[idx];
-    const nextAddr = addresses[idx+1] ? addresses[idx+1] : 'NULL';
+    let state = { poly1: [], poly2: [], result: [], steps: [], currentStep: 0, isPlaying: false, animationSpeed: 1.5, currentPolyTarget: 1, currentOperationExecutor: null };
 
-    node.innerHTML = `
-        <div class="ll-node-compartments">
-            <div class="ll-compartment ll-coeff">Coeff<br>${coef}</div>
-            <div class="ll-compartment ll-power">Power<br>${power}</div>
-            <div class="ll-compartment ll-next">
-                Next<br>
-                <span class="ll-next-addr">${nextAddr}</span>
-            </div>
-        </div>
-        <div class="ll-address">${addr}</div>
-    `;
-    return node;
-}
-function createArrowElement() {
-    const arrow = document.createElement('div');
-    arrow.className = 'll-arrow';
-    return arrow;
-}
-
-// --- Animation Step Management ---
-let steps = []; // Each step: {action, data}
-let currentStep = 0;
-let isPlaying = false;
-let animationSpeed = 1;
-
-// --- DOM Elements ---
-const poly1Input = document.getElementById('poly1');
-const poly2Input = document.getElementById('poly2');
-const startBtn = document.getElementById('startBtn');
-const poly1ListDiv = document.getElementById('poly1List');
-const poly2ListDiv = document.getElementById('poly2List');
-const resultListDiv = document.getElementById('resultList');
-const playBtn = document.getElementById('playBtn');
-const pauseBtn = document.getElementById('pauseBtn');
-const nextBtn = document.getElementById('nextBtn');
-const resetBtn = document.getElementById('resetBtn');
-const speedRange = document.getElementById('speedRange');
-
-// --- Linked List Data ---
-let poly1Arr = [], poly2Arr = [], resultArr = [];
-
-// --- Step Generation ---
-function generateSteps() {
-    steps = [];
-    resultArr = [];
-    // Step 1: Animate creation of Poly1 nodes
-    for (let i = 0; i < poly1Arr.length; ++i) {
-        steps.push({ action: 'createNode', data: { list: 'poly1', idx: i, node: poly1Arr[i] } });
-    }
-    // Step 2: Animate creation of Poly2 nodes
-    for (let i = 0; i < poly2Arr.length; ++i) {
-        steps.push({ action: 'createNode', data: { list: 'poly2', idx: i, node: poly2Arr[i] } });
-    }
-    // Step 3: Addition process
-    let i = 0, j = 0;
-    while (i < poly1Arr.length && j < poly2Arr.length) {
-        steps.push({ action: 'highlight', data: { i, j } });
-        if (poly1Arr[i].power === poly2Arr[j].power) {
-            // Merge nodes
-            let merged = { coef: poly1Arr[i].coef + poly2Arr[j].coef, power: poly1Arr[i].power };
-            steps.push({ action: 'merge', data: { i, j, merged, idx: resultArr.length } });
-            resultArr.push(merged);
-            i++; j++;
-        } else if (poly1Arr[i].power > poly2Arr[j].power) {
-            // Carry poly1 node
-            steps.push({ action: 'carry', data: { from: 'poly1', idx: i, node: poly1Arr[i], resultIdx: resultArr.length } });
-            resultArr.push(poly1Arr[i]);
-            i++;
-        } else {
-            // Carry poly2 node
-            steps.push({ action: 'carry', data: { from: 'poly2', idx: j, node: poly2Arr[j], resultIdx: resultArr.length } });
-            resultArr.push(poly2Arr[j]);
-            j++;
-        }
-        steps.push({ action: 'unhighlight', data: { i: i-1, j: j-1 } });
-    }
-    // Remaining nodes
-    while (i < poly1Arr.length) {
-        steps.push({ action: 'carry', data: { from: 'poly1', idx: i, node: poly1Arr[i], resultIdx: resultArr.length } });
-        resultArr.push(poly1Arr[i]);
-        i++;
-    }
-    while (j < poly2Arr.length) {
-        steps.push({ action: 'carry', data: { from: 'poly2', idx: j, node: poly2Arr[j], resultIdx: resultArr.length } });
-        resultArr.push(poly2Arr[j]);
-        j++;
-    }
+    const generateAddresses = (length, base = 100) => Array.from({ length }, (_, i) => `0x${base + i * 4}`);
+    const delay = (ms) => new Promise(res => setTimeout(res, ms));
+    const logMessage = (message) => { dom.explanationBox.innerHTML = ''; const p = document.createElement("p"); p.textContent = `> ${message}`; dom.explanationBox.appendChild(p); };
+    const clearLog = () => dom.explanationBox.innerHTML = "";
     
-}
-
-// --- Visualization Functions ---
-function clearLists() {
-    poly1ListDiv.innerHTML = '';
-    poly2ListDiv.innerHTML = '';
-    resultListDiv.innerHTML = '';
-}
-function resetVisualization() {
-    isPlaying = false;
-    currentStep = 0;
-    resultArr = [];
-    clearLists();
-    playBtn.disabled = false;
-    pauseBtn.disabled = true;
-    nextBtn.disabled = false;
-}
-function showInitialLists() {
-    clearLists();
-    // Poly1
-    for (let i = 0; i < poly1Arr.length; ++i) {
-        let node = createNodeElement(poly1Arr[i], i, 'poly1');
-        poly1ListDiv.appendChild(node);
-        if (i < poly1Arr.length - 1) poly1ListDiv.appendChild(createArrowElement());
+    function updateVariableState(vars) {
+        dom.variableStateBox.innerHTML = '';
+        for (const key in vars) {
+            dom.variableStateBox.innerHTML += `<div><span class="key">${key}:</span><span class="value">${vars[key]}</span></div>`;
+        }
     }
-    // Poly2
-    for (let i = 0; i < poly2Arr.length; ++i) {
-        let node = createNodeElement(poly2Arr[i], i, 'poly2');
-        poly2ListDiv.appendChild(node);
-        if (i < poly2Arr.length - 1) poly2ListDiv.appendChild(createArrowElement());
-    }
-}
 
-// --- Animation Step Execution ---
-function executeStep(step) {
-    switch (step.action) {
-        case 'createNode': {
-            let { list, idx, node } = step.data;
-            let parentDiv = list === 'poly1' ? poly1ListDiv : list === 'poly2' ? poly2ListDiv : resultListDiv;
-            let addresses;
-            if (list === 'poly1') {
-                addresses = generateAddresses(poly1Arr.length, 100);
-            } else if (list === 'poly2') {
-                addresses = generateAddresses(poly2Arr.length, 200);
+    function createNodeElement({ coef, power }, idx, listType, addresses) {
+        const node = document.createElement('div');
+        node.className = 'll-node';
+        node.id = `${listType}-node-${idx}`;
+        const nextAddr = listType.startsWith('result') ? 'NULL' : (addresses[idx + 1] ? addresses[idx + 1] : 'NULL');
+        node.innerHTML = `<div class="ll-node-compartments"><div class="ll-compartment ll-coeff">Coeff<br>${coef}</div><div class="ll-compartment ll-power">Power<br>${power}</div><div class="ll-compartment ll-next">Next<br><span class="ll-next-addr">${nextAddr}</span></div></div><div class="ll-address">${addresses[idx]}</div>`;
+        return node;
+    }
+
+    function createArrowElement() { const arrow = document.createElement('div'); arrow.className = 'll-arrow'; return arrow; }
+    function createNullSymbol() { const nullEl = document.createElement('span'); nullEl.className = 'null-symbol'; nullEl.textContent = '⏚ NULL'; return nullEl; }
+    function createPointer(id, text) { const ptr = document.createElement('div'); ptr.id = id; ptr.className = 'll-traversal-ptr'; ptr.textContent = text; ptr.style.opacity = '0'; dom.visualizationArea.appendChild(ptr); return ptr; }
+    
+    const p1Ptr = createPointer('p1-ptr', 'P1');
+    const p2Ptr = createPointer('p2-ptr', 'P2');
+    const resultPtr = createPointer('result-ptr', 'Result');
+
+    async function movePointerToNode(ptr, node) {
+        if (!node) { ptr.style.opacity = '0'; return; }
+        ptr.style.opacity = '1';
+        const areaRect = dom.visualizationArea.getBoundingClientRect();
+        const nodeRect = node.getBoundingClientRect();
+        ptr.style.left = `${nodeRect.left - areaRect.left + nodeRect.width / 2 - ptr.offsetWidth / 2}px`;
+        ptr.style.top = `${nodeRect.top - areaRect.top - 40}px`;
+        await delay(300 / state.animationSpeed);
+    }
+
+    function generateSteps(operation) {
+        state.steps = []; let p1 = 0, p2 = 0;
+        state.steps.push({ action: 'start', p1, p2, commentary: "Start of function. Pointers p1 and p2 are set to the heads of the two lists.", codeId: 'ADD_SUB_START', line: 1 });
+        
+        while (p1 < state.poly1.length && p2 < state.poly2.length) {
+            const node1 = state.poly1[p1], node2 = state.poly2[p2];
+            state.steps.push({ action: 'highlight', p1, p2, commentary: "Comparing nodes pointed to by p1 and p2.", codeId: 'ADD_SUB_LOOP', line: 0, vars: { 'p1->power': node1.power, 'p2->power': node2.power } });
+            
+            if (node1.power === node2.power) {
+                let res, codeId, opChar;
+                if (operation === 'addition') { res = node1.coef + node2.coef; codeId = 'ADD_EQUAL'; opChar = '+'; } 
+                else { res = node1.coef - node2.coef; codeId = 'SUB_EQUAL'; opChar = '-'; }
+                state.steps.push({ action: 'add_node', from: 'merge', data: { coef: res, power: node1.power }, commentary: `Powers are equal. ${operation === 'addition' ? 'Adding' : 'Subtracting'} coefficients (${node1.coef} ${opChar} ${node2.coef} = ${res}).`, codeId, line: 0, vars: { 'result': res } });
+                p1++; p2++;
+            } else if (node1.power > node2.power) {
+                state.steps.push({ action: 'add_node', from: 'p1', data: node1, commentary: `p1's power (${node1.power}) is greater. Copying node from p1.`, codeId: 'P1_GREATER', line: 0 });
+                p1++;
             } else {
-                addresses = generateAddresses(idx + 1, 300);
+                const data = operation === 'addition' ? node2 : { ...node2, coef: -node2.coef };
+                const commentary = operation === 'addition' ? `p2's power (${node2.power}) is greater. Copying node from p2.` : `p2's power (${node2.power}) is greater. Copying NEGATED node from p2.`;
+                state.steps.push({ action: 'add_node', from: 'p2', data, commentary, codeId: operation === 'addition' ? 'P2_GREATER' : 'SUB_P2_GREATER', line: 0 });
+                p2++;
             }
-            if (idx > 0) parentDiv.appendChild(createArrowElement());
-            let nodeElem = createNodeElement(node, idx, list, addresses);
-            parentDiv.appendChild(nodeElem);
-            anime({
-                targets: nodeElem,
-                opacity: [0, 1],
-                translateY: [-30, 0],
-                duration: 600 / animationSpeed,
-                easing: 'easeOutBack'
-            });
-            // Head pointer after first node
-            if (idx === 0) createHeadPointer(list);
-            break;
         }
-        case 'highlight': {
-            let { i, j } = step.data;
-            let n1 = document.getElementById(`poly1-node-${i}`);
-            let n2 = document.getElementById(`poly2-node-${j}`);
-            if (n1) n1.classList.add('highlight');
-            if (n2) n2.classList.add('highlight');
-            break;
+
+        while (p1 < state.poly1.length) {
+            state.steps.push({ action: 'highlight', p1, p2: -1, commentary: "List 2 is empty. Processing remainder of List 1.", codeId: 'P1_REMAINDER', line: 0 });
+            state.steps.push({ action: 'add_node', from: 'p1', data: state.poly1[p1], commentary: `Copying remaining node ${state.poly1[p1].coef}x^${state.poly1[p1].power} from List 1.`, codeId: 'P1_REMAINDER', line: 1 });
+            p1++;
         }
-        case 'unhighlight': {
-            let { i, j } = step.data;
-            let n1 = document.getElementById(`poly1-node-${i}`);
-            let n2 = document.getElementById(`poly2-node-${j}`);
-            if (n1) n1.classList.remove('highlight');
-            if (n2) n2.classList.remove('highlight');
-            break;
+
+        while (p2 < state.poly2.length) {
+            state.steps.push({ action: 'highlight', p1: -1, p2, commentary: "List 1 is empty. Processing remainder of List 2.", codeId: 'P2_REMAINDER', line: 0 });
+            const node2 = state.poly2[p2];
+            const data = operation === 'addition' ? node2 : { ...node2, coef: -node2.coef };
+            const commentary = operation === 'addition' ? `Copying remaining node ${node2.coef}x^${node2.power} from List 2.` : `Copying remaining NEGATED node (${-node2.coef}x^${node2.power}) from List 2.`;
+            state.steps.push({ action: 'add_node', from: 'p2', data, commentary, codeId: operation === 'addition' ? 'P2_REMAINDER' : 'SUB_P2_REMAINDER', line: 1 });
+            p2++;
         }
-        case 'merge': {
-            let { i, j, merged, idx } = step.data;
-            let n1 = document.getElementById(`poly1-node-${i}`);
-            let n2 = document.getElementById(`poly2-node-${j}`);
-            if (n1) n1.classList.add('merged');
-            if (n2) n2.classList.add('merged');
-            if (idx > 0) resultListDiv.appendChild(createArrowElement());
-            // Generate addresses for result nodes up to idx+1
-            let resultAddresses = generateAddresses(idx + 1, 300);
-            let nodeElem = createNodeElement(merged, idx, 'result', resultAddresses);
-            resultListDiv.appendChild(nodeElem);
-            anime({
-                targets: nodeElem,
-                opacity: [0, 1],
-                scale: [0.7, 1],
-                duration: 600 / animationSpeed,
-                easing: 'easeOutBack'
-            });
-            // Update head pointer for result list
-            if (idx === 0) createHeadPointer('result');
-            break;
+        state.steps.push({ action: 'end', commentary: "Both lists processed. Operation complete.", codeId: 'END', line: 1 });
+    }
+
+    function generateMultiplicationSteps() {
+        state.steps = []; let intermediate = [];
+        state.steps.push({ action: 'start', commentary: "Starting multiplication.", codeId: 'MULT_OUTER_LOOP', line: 1 });
+        for (let i = 0; i < state.poly1.length; i++) {
+            const node1 = state.poly1[i];
+            state.steps.push({ action: 'highlight', p1: i, p2: -1, commentary: `Outer loop: selecting term ${node1.coef}x^${node1.power} from Poly 1.`, codeId: 'MULT_OUTER_LOOP', line: 1 });
+            for (let j = 0; j < state.poly2.length; j++) {
+                const node2 = state.poly2[j];
+                state.steps.push({ action: 'highlight', p1: i, p2: j, commentary: `Inner loop: multiplying by ${node2.coef}x^${node2.power} from Poly 2.`, codeId: 'MULT_INNER_LOOP', line: 0 });
+                const newCoeff = node1.coef * node2.coef;
+                const newPower = node1.power + node2.power;
+                intermediate.push({ coef: newCoeff, power: newPower });
+                state.steps.push({ action: 'show_intermediate', data: [...intermediate], commentary: `Result is ${newCoeff}x^${newPower}. Adding to intermediate list.`, codeId: 'MULT_CALC', line: 0, vars: { newCoeff, newPower } });
+            }
         }
-        case 'carry': {
-            let { from, idx, node, resultIdx } = step.data;
-            let n = document.getElementById(`${from}-node-${idx}`);
-            if (n) n.classList.add('carry');
-            if (resultIdx > 0) resultListDiv.appendChild(createArrowElement());
-            // Generate addresses for result nodes up to resultIdx+1
-            let resultAddresses = generateAddresses(resultIdx + 1, 300);
-            let nodeElem = createNodeElement(node, resultIdx, 'result', resultAddresses);
-            resultListDiv.appendChild(nodeElem);
-            anime({
-                targets: nodeElem,
-                opacity: [0, 1],
-                scale: [0.7, 1],
-                duration: 600 / animationSpeed,
-                easing: 'easeOutBack'
-            });
-            // Update head pointer for result list
-            if (resultIdx === 0) createHeadPointer('result');
-            break;
+        intermediate.sort((a, b) => b.power - a.power);
+        state.steps.push({ action: 'start_combine', commentary: "All products calculated. Now, combining like terms.", codeId: 'MULT_COMBINE', line: 1 });
+        if (intermediate.length > 0) {
+            let combined = [];
+            for (const term of intermediate) {
+                if (combined.length > 0 && combined[combined.length - 1].power === term.power) {
+                    combined[combined.length - 1].coef += term.coef;
+                    state.steps.push({ action: 'update_node', index: combined.length - 1, data: combined[combined.length - 1], commentary: `Term with power ${term.power} exists. Combining coefficients.`, codeId: 'MULT_COMBINE', line: 1 });
+                } else {
+                    combined.push({ ...term });
+                    state.steps.push({ action: 'add_node', from: 'carry', data: term, commentary: `Adding new term ${term.coef}x^${term.power} to final result.`, codeId: 'MULT_COMBINE', line: 1 });
+                }
+            }
+        }
+        state.steps.push({ action: 'end', commentary: "Multiplication complete.", codeId: 'END', line: 1 });
+    }
+
+    async function executeStep(step) {
+        if (step.commentary) logMessage(step.commentary);
+        if (step.vars) updateVariableState(step.vars);
+        if (step.codeId) {
+            const codeLines = cppCodeSnippets[step.codeId];
+            dom.codeSnippetBox.innerHTML = codeLines.map((line, idx) => `<span class="code-line ${idx === step.line ? 'active' : ''}">${line}</span>`).join('');
+        }
+
+        document.querySelectorAll('.ll-node.highlight').forEach(n => n.classList.remove('highlight'));
+        await movePointerToNode(p1Ptr, document.getElementById(`poly1-node-${step.p1}`));
+        await movePointerToNode(p2Ptr, document.getElementById(`poly2-node-${step.p2}`));
+        await movePointerToNode(resultPtr, document.getElementById(`result-node-${state.result.length - 1}`));
+
+        switch (step.action) {
+            case 'highlight':
+                document.getElementById(`poly1-node-${step.p1}`)?.classList.add('highlight');
+                document.getElementById(`poly2-node-${step.p2}`)?.classList.add('highlight');
+                break;
+            case 'add_node':
+                if (step.data.coef !== 0) {
+                    const resultIdx = state.result.length;
+                    const newNodeEl = createNodeElement(step.data, resultIdx, 'result', generateAddresses(resultIdx + 1, 300));
+                    
+                    const poolRect = dom.memoryPool.getBoundingClientRect();
+                    const listRect = dom.resultListDiv.getBoundingClientRect();
+                    newNodeEl.style.position = 'absolute';
+                    newNodeEl.style.left = `${poolRect.left - listRect.left}px`;
+                    newNodeEl.style.top = `${poolRect.top - listRect.top}px`;
+                    dom.resultListDiv.appendChild(newNodeEl);
+
+                    await new Promise(resolve => anime({ targets: newNodeEl, left: dom.resultListDiv.scrollWidth, top: 0, duration: 600 / state.animationSpeed, easing: 'easeOutQuad', complete: () => { newNodeEl.style.position = 'relative'; newNodeEl.style.left = ''; newNodeEl.style.top = ''; resolve(); }}));
+                    
+                    state.result.push(step.data);
+                    if (resultIdx === 0) dom.resultListDiv.innerHTML = '';
+                    if (resultIdx > 0) dom.resultListDiv.appendChild(createArrowElement());
+                    dom.resultListDiv.appendChild(newNodeEl);
+                    
+                    if (resultIdx > 0) {
+                        const prevNodeEl = document.getElementById(`result-node-${resultIdx - 1}`);
+                        if (prevNodeEl) {
+                            const newAddress = newNodeEl.querySelector('.ll-address').textContent;
+                            prevNodeEl.querySelector('.ll-next-addr').textContent = newAddress;
+                            anime({ targets: prevNodeEl.querySelector('.ll-next'), backgroundColor: ['#f59e42', '#64748b'], duration: 600 });
+                        }
+                    }
+                } else {
+                    logMessage("Resulting coefficient is 0. No node is created to save memory.");
+                    await delay(600 / state.animationSpeed);
+                }
+                break;
+            case 'update_node':
+                const nodeToUpdate = document.getElementById(`result-node-${step.index}`);
+                if (nodeToUpdate) {
+                    nodeToUpdate.querySelector('.ll-coeff').innerHTML = `Coeff<br>${step.data.coef}`;
+                    await new Promise(resolve => anime({ targets: nodeToUpdate, scale: [1.1, 1], duration: 400, complete: resolve }));
+                }
+                break;
+            case 'show_intermediate':
+                dom.resultListDiv.innerHTML = '<div class="list-title" style="width: 100%; text-align: left; margin-bottom: 0.5rem;">Intermediate Products:</div>';
+                step.data.forEach((term, i) => { if (i > 0) dom.resultListDiv.appendChild(createArrowElement()); dom.resultListDiv.appendChild(createNodeElement(term, i, 'inter', generateAddresses(step.data.length, 500))); });
+                break;
+            case 'start_combine':
+                state.result = []; dom.resultListDiv.innerHTML = '';
+                break;
         }
     }
-}
 
-// --- Animation Control ---
-function playAnimation() {
-    if (isPlaying) return;
-    isPlaying = true;
-    playBtn.disabled = true;
-    pauseBtn.disabled = false;
-    nextBtn.disabled = true;
-    function nextAnim() {
-        if (!isPlaying || currentStep >= steps.length) {
-            playBtn.disabled = false;
-            pauseBtn.disabled = true;
-            nextBtn.disabled = false;
-            isPlaying = false;
-            return;
+    function playAnimation() { if (state.isPlaying) return; state.isPlaying = true; updateControlButtons(); const nextAnim = async () => { if (!state.isPlaying || state.currentStep >= state.steps.length) { state.isPlaying = false; updateControlButtons(); return; } await state.currentOperationExecutor(state.steps[state.currentStep]); state.currentStep++; setTimeout(nextAnim, 900 / state.animationSpeed); }; nextAnim(); }
+    function pauseAnimation() { state.isPlaying = false; updateControlButtons(); }
+    async function nextStep() { if (state.isPlaying || state.currentStep >= state.steps.length) return; dom.nextBtn.disabled = true; try { await state.currentOperationExecutor(state.steps[state.currentStep]); state.currentStep++; } finally { updateControlButtons(); } }
+
+    const resetVisualization = (fullReset = false) => {
+        pauseAnimation();
+        ['poly1ListDiv', 'poly2ListDiv', 'resultListDiv'].forEach(key => { if (dom[key]) dom[key].innerHTML = ''; });
+        movePointerToNode(p1Ptr, null); movePointerToNode(p2Ptr, null); movePointerToNode(resultPtr, null);
+        if (fullReset) {
+            state.poly1 = []; state.poly2 = []; state.currentPolyTarget = 1;
+            dom.polyInputContainer.style.display = 'block'; dom.inputSummary.style.display = 'none'; dom.polyInputStep1.style.display = 'block';
+            dom.polyCoeffForm.style.display = 'none'; dom.submitPolyBtn.style.display = 'none';
+            updatePolyInputPrompt();
         }
-        executeStep(steps[currentStep]);
-        currentStep++;
-        setTimeout(nextAnim, 700 / animationSpeed);
+        state.result = []; state.steps = []; state.currentStep = 0;
+        updateControlButtons(true);
+        document.querySelectorAll('.op-btn').forEach(btn => btn.classList.remove('active'));
+        clearLog(); dom.codeSnippetBox.textContent = cppCodeSnippets.NONE; updateVariableState({});
+        showInitialLists();
+    };
+    
+    const updateControlButtons = (forceDisable = false) => {
+        const opButtonsDisabled = forceDisable || (state.poly1.length === 0 && state.poly2.length === 0);
+        document.querySelectorAll('.op-btn').forEach(btn => btn.disabled = opButtonsDisabled);
+        const controlsDisabled = forceDisable || state.steps.length === 0;
+        dom.playBtn.disabled = controlsDisabled || state.isPlaying;
+        dom.pauseBtn.disabled = controlsDisabled || !state.isPlaying;
+        dom.nextBtn.disabled = controlsDisabled || state.isPlaying || state.currentStep >= state.steps.length;
+    };
+    
+    function showInitialLists() {
+        [1, 2].forEach(num => {
+            const listDiv = dom[`poly${num}ListDiv`], polyArr = state[`poly${num}`];
+            listDiv.innerHTML = '';
+            const addresses = generateAddresses(polyArr.length, num === 1 ? 100 : 200);
+            polyArr.forEach((term, i) => { if (i > 0) listDiv.appendChild(createArrowElement()); listDiv.appendChild(createNodeElement(term, i, `poly${num}`, addresses)); });
+            if (polyArr.length === 0) listDiv.appendChild(createNullSymbol());
+        });
+        dom.resultListDiv.innerHTML = ''; dom.resultListDiv.appendChild(createNullSymbol());
     }
-    nextAnim();
-}
-function pauseAnimation() {
-    isPlaying = false;
-    playBtn.disabled = false;
-    pauseBtn.disabled = true;
-    nextBtn.disabled = false;
-}
-function nextStep() {
-    if (currentStep < steps.length) {
-        executeStep(steps[currentStep]);
-        currentStep++;
-    }
-}
-function resetAll() {
-    resetVisualization();
-    resultArr = [];
-    poly1Arr = [];
-    poly2Arr = [];
-    steps = [];
-}
 
-// --- Event Listeners ---
-playBtn.onclick = playAnimation;
-pauseBtn.onclick = pauseAnimation;
-nextBtn.onclick = nextStep;
-resetBtn.onclick = resetAll;
-speedRange.oninput = function() {
-    animationSpeed = Number(speedRange.value);
-};
-startBtn.onclick = startVisualization;
+    function updatePolyInputPrompt() { const polyNumText = state.currentPolyTarget === 1 ? "One" : "Two"; dom.polyInputLabel.textContent = `Enter Max Power of Polynomial ${polyNumText}:`; dom.submitPolyBtn.textContent = `Submit Polynomial ${polyNumText}`; dom.maxPowerInput.value = ''; dom.maxPowerInput.focus(); }
+    dom.nextPolyStepBtn.onclick = () => { const maxPower = parseInt(dom.maxPowerInput.value); if (isNaN(maxPower) || maxPower < -1) { alert("Please enter a valid power (>= -1 for empty list)."); return; } dom.polyCoeffForm.innerHTML = ''; for (let p = maxPower; p >= 0; p--) { dom.polyCoeffForm.innerHTML += `<div><label>Coef of x^${p}: <input type="number" name="coeff_${p}" step="any" value="0"></label></div>`; } dom.polyInputStep1.style.display = 'none'; dom.polyCoeffForm.style.display = 'grid'; dom.submitPolyBtn.style.display = 'block'; };
+    dom.submitPolyBtn.onclick = () => { const maxPower = parseInt(dom.maxPowerInput.value); let arr = []; for (let p = maxPower; p >= 0; p--) { const coef = Number(dom.polyCoeffForm.querySelector(`[name="coeff_${p}"]`).value) || 0; if (coef !== 0) arr.push({ coef, power: p }); } state[`poly${state.currentPolyTarget}`] = arr; if (state.currentPolyTarget === 1) { state.currentPolyTarget = 2; dom.polyInputStep1.style.display = 'block'; dom.polyCoeffForm.style.display = 'none'; dom.submitPolyBtn.style.display = 'none'; updatePolyInputPrompt(); } else { dom.polyInputContainer.style.display = 'none'; dom.inputSummary.style.display = 'block'; logMessage("Polynomials created. Choose an operation."); showInitialLists(); updateControlButtons(false); } };
+    
+    const startOperation = (opName, stepGenerator, stepExecutor) => { resetVisualization(); showInitialLists(); dom.operationHeading.textContent = `2. Performing: ${opName}`; state.currentOperationExecutor = stepExecutor; stepGenerator(opName.toLowerCase()); updateControlButtons(false); };
+    
+    dom.opAddBtn.addEventListener('click', function() { document.querySelectorAll('.op-btn').forEach(btn => btn.classList.remove('active')); this.classList.add('active'); startOperation('Addition', generateSteps, executeStep); });
+    dom.opSubtractBtn.addEventListener('click', function() { document.querySelectorAll('.op-btn').forEach(btn => btn.classList.remove('active')); this.classList.add('active'); startOperation('Subtraction', generateSteps, executeStep); });
+    dom.opMultiplyBtn.addEventListener('click', function() { document.querySelectorAll('.op-btn').forEach(btn => btn.classList.remove('active')); this.classList.add('active'); startOperation('Multiplication', generateMultiplicationSteps, executeStep); });
+    
+    dom.playBtn.onclick = playAnimation;
+    dom.pauseBtn.onclick = pauseAnimation;
+    dom.nextBtn.onclick = nextStep;
+    dom.resetBtn.onclick = () => { resetVisualization(true); logMessage("System reset. Please enter polynomials."); };
+    dom.speedRange.oninput = () => state.animationSpeed = Number(dom.speedRange.value);
 
-// --- Input Handling ---
-function startVisualization() {
-    resetVisualization();
-    let p1 = poly1Input.value.trim();
-    let p2 = poly2Input.value.trim();
-    if (!p1 || !p2) {
-        alert('Please enter both polynomials.');
-        return;
-    }
-    try {
-        poly1Arr = parsePolynomial(p1);
-        poly2Arr = parsePolynomial(p2);
-    } catch (e) {
-        alert('Invalid polynomial format.');
-        return;
-    }
-    resultArr = [];
-    generateSteps();
-    clearLists(); // Only clear, do not showInitialLists
-}
-
-function generateAddresses(length, base=100) {
-    let arr = [];
-    for (let i = 0; i < length; ++i) {
-        arr.push(`0x${base + i}`);
-    }
-    return arr;
-}
-
-function createHeadPointer(listType) {
-    // Remove any existing head pointer
-    const parentDiv = listType === 'poly1' ? poly1ListDiv : listType === 'poly2' ? poly2ListDiv : resultListDiv;
-    const oldHead = parentDiv.querySelector('.ll-headptr');
-    if (oldHead) oldHead.remove();
-
-    const head = document.createElement('div');
-    head.className = 'll-headptr';
-    head.innerHTML = 'head';
-
-    setTimeout(() => {
-        const firstNode = parentDiv.querySelector(`#${listType}-node-0`);
-        if (firstNode) {
-            head.style.position = 'absolute';
-            head.style.left = firstNode.offsetLeft + firstNode.offsetWidth/2 - 20 + 'px';
-            head.style.top = firstNode.offsetTop - 35 + 'px';
-            parentDiv.appendChild(head);
-        }
-    }, 50);
-}
-
+    const initialize = () => { state.animationSpeed = dom.speedRange.value; resetVisualization(true); logMessage("Welcome! Please enter Polynomial One to begin."); };
+    initialize();
+});
