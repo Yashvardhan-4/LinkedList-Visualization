@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Polynomial Addition Visualizer (Linked Lists)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Anime.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Polynomial Addition Visualizer</h1>
+        <div class="inputs">
+            <input id="poly1" type="text" placeholder="Polynomial 1 (e.g. 3x^2 + 5x + 6)">
+            <input id="poly2" type="text" placeholder="Polynomial 2 (e.g. 6x^2 + 2x + 4)">
+            <button id="startBtn">Start</button>
+        </div>
+        <div class="controls">
+            <button id="playBtn">▶ Play</button>
+            <button id="pauseBtn" disabled>⏸ Pause</button>
+            <button id="nextBtn">➡ Next</button>
+            <button id="resetBtn">🔄 Reset</button>
+            <label for="speedRange">Speed:</label>
+            <input type="range" id="speedRange" min="0.5" max="2.5" step="0.1" value="1">
+        </div>
+        <div class="visualization-area vertical">
+            <div>
+                <div class="list-title">Polynomial 1</div>
+                <div id="poly1List" class="linked-list-canvas"></div>
+            </div>
+            <div>
+                <div class="list-title">Polynomial 2</div>
+                <div id="poly2List" class="linked-list-canvas"></div>
+            </div>
+            <div>
+                <div class="list-title">Result</div>
+                <div id="resultList" class="linked-list-canvas"></div>
+            </div>
+        </div>
+    </div>
+    <script src="visualisation_dsa.js"></script>
+</body>
+</html>

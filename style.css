@@ -1,0 +1,155 @@
+/* General styles for DSA Visualization */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f5f7fa;
+    color: #222;
+}
+.container {
+    max-width: 1100px;
+    margin: 2rem auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(45, 108, 223, 0.08);
+    padding: 2rem;
+}
+.inputs, .controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.visualization-area {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    align-items: flex-end;
+    margin-top: 2rem;
+}
+.visualization-area.vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    align-items: center;
+}
+.list-title {
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 1.1em;
+}
+.linked-list-canvas {
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-start; /* <-- change from center to flex-start */
+    position: relative;
+}
+.ll-node {
+    position: relative;
+    background: #2d6cdf;
+    color: #fff;
+    border-radius: 8px;
+    min-width: 90px;
+    min-height: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 18px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(45, 108, 223, 0.12);
+    transition: background 0.3s, transform 0.3s;
+}
+.ll-node.highlight {
+    background: #ffb347;
+    color: #222;
+    transform: scale(1.1);
+}
+.ll-node.merged {
+    background: #6ee7b7;
+    color: #222;
+}
+.ll-node.carry {
+    background: #f87171;
+    color: #fff;
+}
+.ll-arrow {
+    width: 40px;
+    height: 0;
+    border-top: 3px solid #222;
+    position: relative;
+}
+.ll-arrow:after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: -6px;
+    border: solid #222;
+    border-width: 0 3px 3px 0;
+    display: inline-block;
+    padding: 6px;
+    transform: rotate(-45deg);
+}
+.ll-node-compartments {
+    display: flex;
+    min-width: 180px;
+}
+.ll-compartment {
+    flex: 1;
+    min-width: 60px;
+    border-right: 1px solid #fff;
+    padding: 6px 0;
+    text-align: center;
+}
+.ll-compartment:last-child {
+    border-right: none;
+}
+.ll-coeff { background: #2563eb; }
+.ll-power { background: #1e40af; }
+.ll-next { background: #64748b; }
+.ll-next-addr {
+    font-size: 0.8em;
+    color: #ffe066;
+    font-family: monospace;
+}
+.ll-address {
+    font-size: 0.7em;
+    color: #fff;
+    margin-top: 2px;
+    opacity: 0.8;
+}
+.ll-headptr {
+    position: absolute;
+    font-size: 0.95em;
+    color: #f59e42;
+    font-weight: bold;
+    background: #fffbe6;
+    padding: 2px 10px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(45, 108, 223, 0.10);
+    z-index: 2;
+}
+@media (max-width: 768px) {
+    .visualization-container {
+        padding: 1rem;
+        min-width: 90vw;
+    }
+    .visualization-area {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+@media (max-width: 900px) {
+    .visualization-area {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    .linked-list-canvas {
+        justify-content: center;
+    }
+}
