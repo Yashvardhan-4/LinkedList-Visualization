@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Linked List Polynomial Visualizer</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Anime.js for smooth animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
     <script src="visualisation_dsa.js" defer></script>
 </head>
@@ -17,7 +16,6 @@
         </header>
 
         <main>
-            <!-- STEP 1: INPUTS -->
             <section class="input-section">
                 <h2>1. Define Your Polynomials</h2>
                 <div class="input-area">
@@ -38,14 +36,11 @@
             </section>
             
             <div class="main-content-wrapper">
-                <!-- LEFT COLUMN: VISUALIZATION -->
                 <section class="visualization-section">
                     <h2 id="operationHeading">2. Visualization</h2>
                     <div id="visualizationArea" class="visualization-area">
-                        <!-- MEMORY POOL -->
                         <div id="memoryPool" class="memory-pool">Memory Pool</div>
 
-                        <!-- LIST 1 -->
                         <div class="list-container">
                             <div class="head-pointer-container">
                                 <div class="head-pointer" id="head1">p1_head</div>
@@ -55,7 +50,6 @@
                                 <div id="poly1List" class="linked-list-canvas"></div>
                             </div>
                         </div>
-                        <!-- LIST 2 -->
                         <div class="list-container">
                             <div class="head-pointer-container">
                                 <div class="head-pointer" id="head2">p2_head</div>
@@ -65,7 +59,6 @@
                                 <div id="poly2List" class="linked-list-canvas"></div>
                             </div>
                         </div>
-                        <!-- RESULT LIST -->
                         <div class="list-container">
                             <div class="head-pointer-container">
                                 <div class="head-pointer" id="headResult">result_head</div>
@@ -78,7 +71,6 @@
                     </div>
                 </section>
 
-                <!-- RIGHT COLUMN: SIDEBAR -->
                 <aside class="sidebar">
                     <section>
                         <h2>3. Controls</h2>
@@ -96,26 +88,18 @@
                             <input type="range" id="speedRange" min="0.5" max="3" step="0.1" value="1.5">
                         </div>
                     </section>
-                    
+                                        
                     <section class="explanation-section">
-                        <h2>4. Variable State</h2>
-                        <div id="variableStateBox" class="variable-state-box">
-                            <!-- Real-time variable values will appear here -->
-                        </div>
-                    </section>
-                    
-                    <section class="explanation-section">
-                        <h2>5. Commentary</h2>
+                        <h2>4. Commentary</h2>
                         <div id="explanationBox" class="explanation-box">
                             <p>Welcome!</p>
                         </div>
                     </section>
 
                     <section class="code-section">
-                        <h2>6. C++ Code</h2>
+                        <h2>5. C++ Code</h2>
                         <div id="codeSnippetBox" class="code-snippet-box">
-                            <!-- C++ code will appear here -->
-                        </div>
+                            </div>
                     </section>
                 </aside>
             </div>
