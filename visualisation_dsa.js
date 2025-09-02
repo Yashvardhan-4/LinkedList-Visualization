@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
         explanationBox: document.getElementById('explanationBox'),
         operationHeading: document.getElementById('operationHeading'),
         codeSnippetBox: document.getElementById('codeSnippetBox'),
-        memoryPool: document.getElementById('memoryPool'),
         head1: document.getElementById('head1'),
         head2: document.getElementById('head2'),
         headResult: document.getElementById('headResult'),
@@ -47,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         MULT_INNER_LOOP: [`        for (Node* t2 = p2; t2 != nullptr; t2 = t2->next) {`],
         MULT_CALC: [`            int newCoeff = t1->coeff * t2->coeff;`, `            int newPower = t1->power + t2->power;`, `            // Add to intermediate list...`],
         MULT_COMBINE: [`    // After loops, combine like terms...`],
-        END: [`    }`, `    return resultHead;`]
+        END: [`    }`, `    return res_head;`]
     };
 
     let state = { poly1: [], poly2: [], result: [], steps: [], currentStep: 0, isPlaying: false, animationSpeed: 1.5, currentPolyTarget: 1, currentOperationExecutor: null, typewriterAnimation: null };
@@ -55,11 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateAddresses = (length, base = 100) => Array.from({ length }, (_, i) => `0x${base + i * 4}`);
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-    // --- CORRECTED TYPEWRITER FUNCTION ---
     function typewriter(element, text) {
-        if (state.typewriterAnimation) {
-            state.typewriterAnimation.pause();
-        }
+        if (state.typewriterAnimation) { state.typewriterAnimation.pause(); }
         element.innerHTML = '';
         const p = document.createElement("p");
         p.innerHTML = '> <span class="content"></span><span class="cursor">&nbsp;</span>';
@@ -70,19 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
         state.typewriterAnimation = anime({
             targets: { progress: 0 },
             progress: textLength,
-            round: 1, // Use round to ensure we get whole numbers
+            round: 1,
             duration: textLength * (30 / state.animationSpeed),
             easing: 'linear',
             update: function (anim) {
-                // Slice the original text based on the animated progress number
                 contentSpan.innerHTML = text.slice(0, anim.animations[0].currentValue);
             },
             complete: function() {
                  const cursor = p.querySelector('.cursor');
-                 if(cursor) {
-                    cursor.style.animation = 'none';
-                    cursor.style.opacity = '0';
-                 }
+                 if(cursor) { cursor.style.animation = 'none'; cursor.style.opacity = '0'; }
             }
         });
     }
@@ -112,34 +104,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function movePointerToNode(ptr, node) {
         const targetOpacity = node ? 1 : 0;
-        let left = ptr.offsetLeft;
-        let top = ptr.offsetTop;
-
+        let left = ptr.offsetLeft; let top = ptr.offsetTop;
         if (node) {
             const areaRect = dom.visualizationArea.getBoundingClientRect();
             const nodeRect = node.getBoundingClientRect();
             left = nodeRect.left - areaRect.left + nodeRect.width / 2 - ptr.offsetWidth / 2;
             top = nodeRect.top - areaRect.top - 40;
         }
+        await anime({ targets: ptr, left: left, top: [top - 20, top], opacity: targetOpacity, duration: 600 / state.animationSpeed, easing: 'easeOutElastic(1, .8)' }).finished;
+    }
 
-        await anime({
-            targets: ptr,
-            left: left,
-            top: [top - 20, top], // Add the "jump" effect
-            opacity: targetOpacity,
-            duration: 600 / state.animationSpeed,
-            easing: 'easeOutElastic(1, .8)'
-        }).finished;
+    function updateHeadPointers() {
+        ['poly1List', 'poly2List', 'resultList'].forEach(listId => {
+            const listDiv = dom[`${listId}Div`];
+            if (!listDiv) return;
+
+            const headPointerContainer = listDiv.parentElement.parentElement.querySelector('.head-pointer-container');
+            const firstNode = listDiv.querySelector('.ll-node');
+
+            if (firstNode) {
+                const containerRect = listDiv.parentElement.parentElement.getBoundingClientRect();
+                const nodeRect = firstNode.getBoundingClientRect();
+                const top = nodeRect.top - containerRect.top + (nodeRect.height / 2) - (headPointerContainer.offsetHeight / 2);
+                headPointerContainer.style.top = `${top}px`;
+                headPointerContainer.style.opacity = '1';
+            } else {
+                headPointerContainer.style.top = '50%';
+                headPointerContainer.style.transform = 'translateY(-50%)';
+                headPointerContainer.style.opacity = '0';
+            }
+        });
     }
 
     function generateSteps(operation) {
         state.steps = []; let p1 = 0, p2 = 0;
         state.steps.push({ action: 'start', p1, p2, commentary: "Start of function. Pointers p1 and p2 are set to the heads of the two lists.", codeId: 'ADD_SUB_START', line: 1 });
-        
         while (p1 < state.poly1.length && p2 < state.poly2.length) {
             const node1 = state.poly1[p1], node2 = state.poly2[p2];
             state.steps.push({ action: 'highlight', p1, p2, commentary: "Comparing nodes pointed to by p1 and p2.", codeId: 'ADD_SUB_LOOP', line: 0 });
-            
             if (node1.power === node2.power) {
                 let res, codeId, opChar;
                 if (operation === 'addition') { res = node1.coef + node2.coef; codeId = 'ADD_EQUAL'; opChar = '+'; } 
@@ -156,13 +158,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 p2++;
             }
         }
-
         while (p1 < state.poly1.length) {
             state.steps.push({ action: 'highlight', p1, p2: -1, commentary: "List 2 is empty. Processing remainder of List 1.", codeId: 'P1_REMAINDER', line: 0 });
             state.steps.push({ action: 'add_node', from: 'p1', data: state.poly1[p1], p1, commentary: `Copying remaining node ${state.poly1[p1].coef}x^${state.poly1[p1].power} from List 1.`, codeId: 'P1_REMAINDER', line: 1 });
             p1++;
         }
-
         while (p2 < state.poly2.length) {
             state.steps.push({ action: 'highlight', p1: -1, p2, commentary: "List 1 is empty. Processing remainder of List 2.", codeId: 'P2_REMAINDER', line: 0 });
             const node2 = state.poly2[p2];
@@ -211,12 +211,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (step.codeId) {
             dom.codeSnippetBox.innerHTML = cppCodeSnippets[step.codeId].map((line, idx) => `<span class="code-line ${idx === step.line ? 'active' : ''}">${line}</span>`).join('');
         }
-
         document.querySelectorAll('.ll-node.highlight').forEach(n => n.classList.remove('highlight'));
         await movePointerToNode(p1Ptr, document.getElementById(`poly1-node-${step.p1}`));
         await movePointerToNode(p2Ptr, document.getElementById(`poly2-node-${step.p2}`));
         await movePointerToNode(resultPtr, document.getElementById(`result-node-${state.result.length - 1}`));
-
         switch (step.action) {
             case 'highlight':
                 document.getElementById(`poly1-node-${step.p1}`)?.classList.add('highlight');
@@ -228,11 +226,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     await delay(600 / state.animationSpeed);
                     break;
                 }
-
                 const resultIdx = state.result.length;
                 let ghostNode;
                 const areaRect = dom.visualizationArea.getBoundingClientRect();
-                
                 if (step.from === 'p1' || step.from === 'p2') {
                     const sourceNode = document.getElementById(`poly${step.from[1]}-node-${step[step.from]}`);
                     ghostNode = sourceNode.cloneNode(true);
@@ -242,10 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ghostNode.style.left = `${sourceRect.left - areaRect.left}px`;
                     ghostNode.style.top = `${sourceRect.top - areaRect.top}px`;
                     dom.visualizationArea.appendChild(ghostNode);
-
                     const targetLeft = dom.resultListDiv.getBoundingClientRect().left - areaRect.left + dom.resultListDiv.scrollWidth;
                     const targetTop = dom.resultListDiv.getBoundingClientRect().top - areaRect.top;
-                    
                     await anime({ targets: ghostNode, left: targetLeft, top: targetTop, scale: 0.8, opacity: 0, duration: 800 / state.animationSpeed, easing: 'easeInExpo' }).finished;
                     ghostNode.remove();
                 } else if (step.from === 'merge') {
@@ -253,13 +247,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const node2 = document.getElementById(`poly2-node-${step.p2}`);
                     const rect1 = node1.getBoundingClientRect();
                     const rect2 = node2.getBoundingClientRect();
-                    
                     const midX = ((rect1.left + rect2.left) / 2) - areaRect.left;
                     const midY = ((rect1.top + rect2.top) / 2) - areaRect.top;
-
-                    const tl = anime.timeline({ duration: 500 / state.animationSpeed, easing: 'easeOutSine' });
-                    tl.add({ targets: [node1, node2], translateX: (el, i) => i === 0 ? 20 : -20, direction: 'alternate' });
-                    
+                    const tl = anime.timeline({ easing: 'easeInOutSine', duration: 300 / state.animationSpeed });
+                    tl.add({ targets: [node1, node2], translateX: (el, i) => i === 0 ? 15 : -15, });
+                    tl.add({ targets: [node1, node2], translateX: 0, });
                     ghostNode = createNodeElement(step.data, 'ghost', 'result', []);
                     ghostNode.classList.add('ghost');
                     ghostNode.style.position = 'absolute';
@@ -267,32 +259,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     ghostNode.style.top = `${midY}px`;
                     ghostNode.style.opacity = 0;
                     dom.visualizationArea.appendChild(ghostNode);
-                    
                     const targetLeft = dom.resultListDiv.getBoundingClientRect().left - areaRect.left + dom.resultListDiv.scrollWidth;
                     const targetTop = dom.resultListDiv.getBoundingClientRect().top - areaRect.top;
-                    
                     await tl.finished;
                     await anime({ targets: ghostNode, left: targetLeft, top: targetTop, scale: [0.5, 1], opacity: [0.6, 0], duration: 800 / state.animationSpeed, easing: 'easeInExpo' }).finished;
                     ghostNode.remove();
                 }
-
                 state.result.push(step.data);
                 if (resultIdx === 0) dom.resultListDiv.innerHTML = '';
-                
                 const newArrow = resultIdx > 0 ? createArrowElement() : null;
                 if (newArrow) dom.resultListDiv.appendChild(newArrow);
-
                 const newNodeEl = createNodeElement(step.data, resultIdx, 'result', generateAddresses(resultIdx + 1, 300));
                 dom.resultListDiv.appendChild(newNodeEl);
-                
-                const creationTimeline = anime.timeline({ duration: 500 / state.animationSpeed });
-                if (newArrow) {
-                    creationTimeline.add({ targets: newArrow, width: [0, 30], easing: 'easeOutQuad' }, 0);
-                }
+                const creationTimeline = anime.timeline({ duration: 500 / state.animationSpeed, complete: updateHeadPointers });
+                if (newArrow) { creationTimeline.add({ targets: newArrow, width: [0, 30], easing: 'easeOutQuad' }, 0); }
                 creationTimeline.add({ targets: newNodeEl, scale: [0.7, 1], opacity: [0.5, 1], easing: 'easeOutBack' }, 0);
-
                 await creationTimeline.finished;
-
                 if (resultIdx > 0) {
                     const prevNodeEl = document.getElementById(`result-node-${resultIdx - 1}`);
                     if (prevNodeEl) {
@@ -312,10 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'show_intermediate':
                 dom.resultListDiv.innerHTML = '<div class="list-title" style="width: 100%; text-align: left; margin-bottom: 0.5rem;">Intermediate Products:</div>';
                 step.data.forEach((term, i) => { if (i > 0) dom.resultListDiv.appendChild(createArrowElement()); dom.resultListDiv.appendChild(createNodeElement(term, i, 'inter', generateAddresses(step.data.length, 500))); });
-                anime({ targets: dom.resultListDiv.querySelectorAll('.ll-node'), scale: [0.5, 1], opacity: [0, 1], delay: anime.stagger(50) });
+                anime({ targets: dom.resultListDiv.querySelectorAll('.ll-node'), scale: [0.5, 1], opacity: [0, 1], delay: anime.stagger(50), complete: updateHeadPointers });
                 break;
             case 'start_combine':
-                state.result = []; dom.resultListDiv.innerHTML = '';
+                state.result = []; dom.resultListDiv.innerHTML = ''; updateHeadPointers();
                 break;
         }
     }
@@ -327,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetVisualization = (fullReset = false) => {
         pauseAnimation();
         ['poly1ListDiv', 'poly2ListDiv', 'resultListDiv'].forEach(key => { if (dom[key]) dom[key].innerHTML = ''; });
-        movePointerToNode(p1Ptr, null); movePointerToNode(p2Ptr, null); movePointerToNode(resultPtr, null);
         if (fullReset) {
             state.poly1 = []; state.poly2 = []; state.currentPolyTarget = 1;
             dom.inputSection.classList.remove('hidden'); dom.polyInputStep1.classList.remove('hidden');
@@ -374,11 +355,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 opacity: [0, 1],
                 delay: anime.stagger(100 / state.animationSpeed, { start: 200 }),
                 duration: 800 / state.animationSpeed,
-                easing: 'easeOutExpo'
+                easing: 'easeOutExpo',
+                complete: updateHeadPointers
             });
         });
         dom.resultListDiv.innerHTML = '';
         dom.resultListDiv.appendChild(createNullSymbol());
+        updateHeadPointers();
     }
 
     function updatePolyInputPrompt() { const polyNumText = state.currentPolyTarget === 1 ? "One" : "Two"; dom.polyInputLabel.textContent = `Enter Max Power of Polynomial ${polyNumText}:`; dom.submitPolyBtn.textContent = `Submit Polynomial ${polyNumText}`; dom.maxPowerInput.value = ''; dom.maxPowerInput.focus(); }
