@@ -91,11 +91,27 @@ button:hover:not(:disabled) { border-color: var(--primary-color); color: var(--p
 
 /* --- Visualization Area --- */
 .visualization-area { display: flex; flex-direction: column; gap: 1rem; position: relative; }
-.memory-pool { position: absolute; top: 0; right: 0; background: #e0e7ff; border: 2px dashed var(--primary-color); color: var(--primary-dark); padding: 0.5rem 1rem; border-radius: var(--border-radius); font-weight: 500; }
-.list-container { display: flex; align-items: center; gap: 1rem; min-height: 120px; }
-.head-pointer-container { width: 100px; text-align: center; }
+
+/* --- CORRECTED LIST CONTAINER LAYOUT --- */
+.list-container {
+    position: relative; /* Parent for absolute positioning */
+    min-height: 120px;
+    padding-left: 100px; /* Use padding on the container itself to create space */
+}
+
+.head-pointer-container {
+    position: absolute; /* Positioned by JavaScript */
+    left: 10px; /* Positioned inside the container's original boundary, before padding */
+    width: 80px;
+    text-align: center;
+    transition: opacity 0.4s ease, top 0.4s ease;
+}
+
+.list-content {
+    /* No margin needed anymore, it lives inside the padded container */
+}
+
 .head-pointer { background: var(--accent-light); border: 1px solid var(--accent-color); color: var(--accent-color); padding: 4px 8px; border-radius: var(--border-radius); font-family: monospace; font-weight: bold; display: inline-block; }
-.list-content { flex-grow: 1; }
 .list-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1em; }
 .linked-list-canvas { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; position: relative; padding: 10px 0; }
 
@@ -105,12 +121,11 @@ button:hover:not(:disabled) { border-color: var(--primary-color); color: var(--p
 .ll-node.carry { background: var(--red-color); }
 .ll-node.ghost { opacity: 0.6; border: 3px dashed var(--accent-color); transform: scale(0.9); z-index: 20; }
 
-/* --- NEW, MORE PROMINENT HIGHLIGHT --- */
 .ll-node.highlight {
     transform: scale(1.1);
     border: 3px solid var(--accent-dark);
     animation: pulse-highlight 1.5s ease-in-out infinite;
-    z-index: 5; /* Ensures the highlighted node appears above others */
+    z-index: 5;
 }
 
 .ll-node-compartments { display: flex; border-radius: calc(var(--border-radius) - 3px); /* Adjust for border */ overflow: hidden; }
@@ -124,7 +139,6 @@ button:hover:not(:disabled) { border-color: var(--primary-color); color: var(--p
 .ll-arrow { width: 30px; height: 2px; background-color: var(--text-color); position: relative; margin-bottom: 35px; }
 .ll-arrow::after { content: ''; position: absolute; right: -2px; top: -4px; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid var(--text-color); }
 
-/* Traversal Pointers no longer use CSS transitions; they are controlled by Anime.js */
 .ll-traversal-ptr { position: absolute; font-size: 0.9em; font-weight: bold; padding: 2px 10px; border-radius: var(--border-radius); z-index: 10; text-align: center; background: #fff; min-width: 30px; border: 1px solid; }
 #p1-ptr { border-color: var(--red-color); color: var(--red-color); }
 #p2-ptr { border-color: var(--green-color); color: var(--green-color); }
@@ -135,7 +149,6 @@ button:hover:not(:disabled) { border-color: var(--primary-color); color: var(--p
 .explanation-box, .code-snippet-box { border-radius: var(--border-radius); padding: 1rem; font-family: 'Fira Code', 'Courier New', Courier, monospace; }
 .explanation-box { background: #2d3748; color: #f7fafc; border: 1px solid #4a5568; font-size: 0.95em; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
 .explanation-box p { margin: 4px 0; white-space: pre-wrap; }
-/* Style for typewriter effect */
 .explanation-box p .cursor {
     display: inline-block;
     background-color: transparent;
