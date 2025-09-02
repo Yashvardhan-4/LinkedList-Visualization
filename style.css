@@ -7,6 +7,7 @@
     --primary-light: #dbeafe;
     --primary-dark: #1e40af;
     --accent-color: #f59e42;
+    --accent-dark: #d97706; /* Darker accent for borders */
     --accent-light: #fffbe6;
     --red-color: #ef4444;
     --green-color: #22c55e;
@@ -14,6 +15,26 @@
     --border-radius: 8px;
     --box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
+
+/* Animation for the highlight effect */
+@keyframes pulse-highlight {
+    0% {
+        box-shadow: 0 0 12px 2px rgba(245, 158, 66, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 20px 8px rgba(245, 158, 66, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 12px 2px rgba(245, 158, 66, 0.7);
+    }
+}
+
+/* Animation for the typewriter cursor */
+@keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: var(--accent-color); }
+}
+
 
 body {
     margin: 0;
@@ -79,11 +100,20 @@ button:hover:not(:disabled) { border-color: var(--primary-color); color: var(--p
 .linked-list-canvas { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; position: relative; padding: 10px 0; }
 
 /* --- Nodes, Arrows, Pointers --- */
-.ll-node { position: relative; background: var(--primary-color); color: #fff; border-radius: var(--border-radius); font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s; text-align: center; margin-bottom: 35px; }
+.ll-node { position: relative; background: var(--primary-color); color: #fff; border: 3px solid transparent; /* Reserve space for highlight border */ border-radius: var(--border-radius); font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: background-color 0.3s; text-align: center; margin-bottom: 35px; }
 .ll-node.merged { background: var(--green-color); }
 .ll-node.carry { background: var(--red-color); }
-.ll-node.highlight { box-shadow: 0 0 12px var(--accent-color); transform: scale(1.05); }
-.ll-node-compartments { display: flex; border-radius: var(--border-radius) var(--border-radius) 0 0; overflow: hidden; }
+.ll-node.ghost { opacity: 0.6; border: 3px dashed var(--accent-color); transform: scale(0.9); z-index: 20; }
+
+/* --- NEW, MORE PROMINENT HIGHLIGHT --- */
+.ll-node.highlight {
+    transform: scale(1.1);
+    border: 3px solid var(--accent-dark);
+    animation: pulse-highlight 1.5s ease-in-out infinite;
+    z-index: 5; /* Ensures the highlighted node appears above others */
+}
+
+.ll-node-compartments { display: flex; border-radius: calc(var(--border-radius) - 3px); /* Adjust for border */ overflow: hidden; }
 .ll-compartment { padding: 8px 0; min-width: 65px; border-right: 1px solid rgba(255, 255, 255, 0.3); }
 .ll-compartment:last-child { border-right: none; }
 .ll-coeff { background: var(--primary-dark); }
@@ -93,21 +123,29 @@ button:hover:not(:disabled) { border-color: var(--primary-color); color: var(--p
 .ll-address { font-size: 0.8em; color: #555; position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); background: #f0f0f0; padding: 1px 6px; border-radius: 4px; }
 .ll-arrow { width: 30px; height: 2px; background-color: var(--text-color); position: relative; margin-bottom: 35px; }
 .ll-arrow::after { content: ''; position: absolute; right: -2px; top: -4px; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid var(--text-color); }
-.ll-traversal-ptr { position: absolute; font-size: 0.9em; font-weight: bold; padding: 2px 10px; border-radius: var(--border-radius); z-index: 10; transition: left 0.4s ease-out, top 0.4s ease-out; text-align: center; background: #fff; min-width: 30px; border: 1px solid; }
+
+/* Traversal Pointers no longer use CSS transitions; they are controlled by Anime.js */
+.ll-traversal-ptr { position: absolute; font-size: 0.9em; font-weight: bold; padding: 2px 10px; border-radius: var(--border-radius); z-index: 10; text-align: center; background: #fff; min-width: 30px; border: 1px solid; }
 #p1-ptr { border-color: var(--red-color); color: var(--red-color); }
 #p2-ptr { border-color: var(--green-color); color: var(--green-color); }
 #result-ptr { border-color: var(--primary-color); color: var(--primary-color); }
 .null-symbol { font-weight: bold; color: var(--grey-color); margin-left: 0.5rem; }
 
 /* --- Sidebar Boxes --- */
-.variable-state-box, .explanation-box, .code-snippet-box { border-radius: var(--border-radius); padding: 1rem; font-family: 'Fira Code', 'Courier New', Courier, monospace; overflow-y: auto; }
-.variable-state-box { background: #eef2ff; border: 1px solid #c7d2fe; height: 120px; font-size: 0.9em; }
-.variable-state-box div { display: flex; justify-content: space-between; }
-.variable-state-box .key { font-weight: bold; color: var(--primary-dark); }
-.variable-state-box .value { color: var(--text-color); }
-.explanation-box { background: #2d3748; color: #f7fafc; border: 1px solid #4a5568; font-size: 0.95em; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); height: 150px; }
+.explanation-box, .code-snippet-box { border-radius: var(--border-radius); padding: 1rem; font-family: 'Fira Code', 'Courier New', Courier, monospace; }
+.explanation-box { background: #2d3748; color: #f7fafc; border: 1px solid #4a5568; font-size: 0.95em; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
 .explanation-box p { margin: 4px 0; white-space: pre-wrap; }
-.code-snippet-box { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; font-size: 0.85em; white-space: pre; height: 250px; }
+/* Style for typewriter effect */
+.explanation-box p .cursor {
+    display: inline-block;
+    background-color: transparent;
+    border-left: 2px solid var(--accent-color);
+    margin-left: 2px;
+    height: 1em;
+    animation: blink-caret 1s step-end infinite;
+}
+
+.code-snippet-box { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; font-size: 0.85em; white-space: pre; }
 .code-line { display: block; padding: 2px 8px; border-radius: 4px; transition: background-color 0.3s; }
 .code-line.active { background-color: rgba(245, 158, 66, 0.3); }
 
